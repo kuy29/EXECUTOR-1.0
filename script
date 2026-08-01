@@ -1,0 +1,460 @@
+-- Modern Black & White UI with Status Notification Bar & Placeholder
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local TopBar = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local MinimizeBtn = Instance.new("TextButton")
+
+-- Notification Banner (แถบแจ้งเตือนสถานะ)
+local StatusBanner = Instance.new("TextLabel")
+local BannerCorner = Instance.new("UICorner")
+
+-- Editor Containers
+local EditorFrame = Instance.new("ScrollingFrame")
+local LineNumbers = Instance.new("TextLabel")
+local ScriptInput = Instance.new("TextBox")
+
+-- Buttons
+local RunBtn = Instance.new("TextButton")
+local CopyBtn = Instance.new("TextButton")
+local ClearBtn = Instance.new("TextButton")
+
+-- Toggle Button (ปุ่มย่อ/เปิด UI)
+local OpenToggleBtn = Instance.new("TextButton")
+local ToggleCorner = Instance.new("UICorner")
+
+-- Title Gradient (ขาว -> ดำ)
+local TitleGradient = Instance.new("UIGradient")
+
+-- Memory Variables
+local lastMainFramePos = UDim2.new(0.5, -240, 0.5, -165)
+local lastTogglePos = UDim2.new(0, 20, 0.5, -20)
+
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = "BW_StatusNotify_UI"
+
+---------------------------------------------------------
+-- 1. TOGGLE BUTTON SETUP
+---------------------------------------------------------
+OpenToggleBtn.Name = "OpenToggleBtn"
+OpenToggleBtn.Parent = ScreenGui
+OpenToggleBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+OpenToggleBtn.Position = lastTogglePos
+OpenToggleBtn.Size = UDim2.new(0, 40, 0, 40)
+OpenToggleBtn.Font = Enum.Font.GothamBold
+OpenToggleBtn.Text = "⚡"
+OpenToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenToggleBtn.TextSize = 20
+OpenToggleBtn.Visible = false
+OpenToggleBtn.Active = true
+OpenToggleBtn.Draggable = true
+
+ToggleCorner.CornerRadius = UDim.new(1, 0)
+ToggleCorner.Parent = OpenToggleBtn
+
+---------------------------------------------------------
+-- 2. MAIN FRAME SETUP
+---------------------------------------------------------
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.Position = lastMainFramePos
+MainFrame.Size = UDim2.new(0, 480, 0, 330)
+MainFrame.Active = true
+MainFrame.ClipsDescendants = true
+MainFrame.Visible = false
+
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Top Bar
+TopBar.Name = "TopBar"
+TopBar.Parent = MainFrame
+TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TopBar.Size = UDim2.new(1, 0, 0, 40)
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 10)
+TopCorner.Parent = TopBar
+
+-- Title Text
+Title.Name = "Title"
+Title.Parent = TopBar
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.Size = UDim2.new(0, 250, 1, 0)
+Title.Font = Enum.Font.GothamBlack
+Title.Text = "⚡ EXECUTOR 1.0"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 17
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+TitleGradient.Rotation = 0
+TitleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 40, 40))
+})
+TitleGradient.Parent = Title
+
+MinimizeBtn.Name = "MinimizeBtn"
+MinimizeBtn.Parent = TopBar
+MinimizeBtn.BackgroundTransparency = 1
+MinimizeBtn.Position = UDim2.new(1, -35, 0, 0)
+MinimizeBtn.Size = UDim2.new(0, 35, 1, 0)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.Text = "─"
+MinimizeBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+MinimizeBtn.TextSize = 16
+
+---------------------------------------------------------
+-- 3. STATUS NOTIFICATION BANNER (เพิ่มส่วนแจ้งเตือน)
+---------------------------------------------------------
+StatusBanner.Name = "StatusBanner"
+StatusBanner.Parent = MainFrame
+StatusBanner.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+StatusBanner.Position = UDim2.new(0, 15, 0, 48)
+StatusBanner.Size = UDim2.new(1, -30, 0, 24)
+StatusBanner.Font = Enum.Font.GothamBold
+StatusBanner.Text = "READY TO EXECUTE"
+StatusBanner.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusBanner.TextSize = 11
+StatusBanner.BorderSizePixel = 0
+
+BannerCorner.CornerRadius = UDim.new(0, 4)
+BannerCorner.Parent = StatusBanner
+
+-- ฟังก์ชันแสดงข้อความแจ้งเตือนพร้อมอนิเมชัน
+local currentNotifyId = 0
+local function showNotification(message, isSuccess, isWarning)
+    currentNotifyId = currentNotifyId + 1
+    local thisNotifyId = currentNotifyId
+
+    StatusBanner.Text = message
+    if isSuccess then
+        StatusBanner.BackgroundColor3 = Color3.fromRGB(20, 60, 30) -- เขียว
+        StatusBanner.TextColor3 = Color3.fromRGB(120, 255, 150)
+    elseif isWarning then
+        StatusBanner.BackgroundColor3 = Color3.fromRGB(70, 50, 10) -- เหลืองส้ม
+        StatusBanner.TextColor3 = Color3.fromRGB(255, 200, 100)
+    else
+        StatusBanner.BackgroundColor3 = Color3.fromRGB(70, 20, 20) -- แดง
+        StatusBanner.TextColor3 = Color3.fromRGB(255, 120, 120)
+    end
+
+    -- เคลียร์การแจ้งเตือนกลับเป็นปกติใน 3 วินาที
+    task.delay(3, function()
+        if currentNotifyId == thisNotifyId then
+            TweenService:Create(StatusBanner, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+                TextColor3 = Color3.fromRGB(180, 180, 180)
+            }):Play()
+            StatusBanner.Text = "READY TO EXECUTE"
+        end
+    end)
+end
+
+---------------------------------------------------------
+-- 4. EDITOR CONTAINER (ปรับให้ใช้ Placeholder เป็นพื้นหลัง)
+---------------------------------------------------------
+EditorFrame.Name = "EditorFrame"
+EditorFrame.Parent = MainFrame
+EditorFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+EditorFrame.Position = UDim2.new(0, 15, 0, 78) -- ปรับขยับลงมาหลบแถบแจ้งเตือน
+EditorFrame.Size = UDim2.new(1, -30, 0, 178)
+EditorFrame.CanvasSize = UDim2.new(0, 0, 0, 178)
+EditorFrame.ScrollBarThickness = 5
+EditorFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
+EditorFrame.BorderSizePixel = 0
+
+local EditorCorner = Instance.new("UICorner")
+EditorCorner.CornerRadius = UDim.new(0, 6)
+EditorCorner.Parent = EditorFrame
+
+LineNumbers.Name = "LineNumbers"
+LineNumbers.Parent = EditorFrame
+LineNumbers.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
+LineNumbers.Size = UDim2.new(0, 35, 1, 0)
+LineNumbers.Font = Enum.Font.Code
+LineNumbers.Text = "1\n"
+LineNumbers.TextColor3 = Color3.fromRGB(90, 90, 90)
+LineNumbers.TextSize = 13
+LineNumbers.TextYAlignment = Enum.TextYAlignment.Top
+LineNumbers.BorderSizePixel = 0
+
+-- [UPDATED] ใช้ PlaceholderText แทน Text หลัก
+ScriptInput.Name = "ScriptInput"
+ScriptInput.Parent = EditorFrame
+ScriptInput.BackgroundTransparency = 1
+ScriptInput.Position = UDim2.new(0, 40, 0, 0)
+ScriptInput.Size = UDim2.new(1, -45, 1, 0)
+ScriptInput.Font = Enum.Font.Code
+ScriptInput.Text = "" -- เอาตัวหนังสือออกเป็นค่าว่าง
+ScriptInput.PlaceholderText = "-- วางสคริปต์ของคุณที่นี่..." -- เป็นข้อความพื้นหลังลางๆ
+ScriptInput.PlaceholderColor3 = Color3.fromRGB(80, 80, 80)
+ScriptInput.TextColor3 = Color3.fromRGB(230, 230, 230)
+ScriptInput.TextSize = 13
+ScriptInput.TextXAlignment = Enum.TextXAlignment.Left
+ScriptInput.TextYAlignment = Enum.TextYAlignment.Top
+ScriptInput.ClearTextOnFocus = false
+ScriptInput.MultiLine = true
+
+local function updateEditor()
+    local text = ScriptInput.Text
+    local _, lineCount = string.gsub(text, "\n", "\n")
+    lineCount = lineCount + 1
+
+    local linesText = ""
+    for i = 1, lineCount do
+        linesText = linesText .. tostring(i) .. "\n"
+    end
+    LineNumbers.Text = linesText
+
+    local newHeight = math.max(178, lineCount * 16)
+    EditorFrame.CanvasSize = UDim2.new(0, 0, 0, newHeight)
+    ScriptInput.Size = UDim2.new(1, -45, 0, newHeight)
+    LineNumbers.Size = UDim2.new(0, 35, 0, newHeight)
+end
+
+ScriptInput:GetPropertyChangedSignal("Text"):Connect(updateEditor)
+
+-- Buttons Setup
+local function createButton(name, text, pos, size, color, textColor)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Parent = MainFrame
+    btn.BackgroundColor3 = color
+    btn.Position = pos
+    btn.Size = size
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = text
+    btn.TextColor3 = textColor
+    btn.TextSize = 13
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    return btn
+end
+
+RunBtn = createButton("RunBtn", "▶ EXECUTE", UDim2.new(0, 15, 0, 270), UDim2.new(0, 160, 0, 40), Color3.fromRGB(255, 255, 255), Color3.fromRGB(15, 15, 15))
+CopyBtn = createButton("CopyBtn", "📋 COPY", UDim2.new(0, 185, 0, 270), UDim2.new(0, 135, 0, 40), Color3.fromRGB(28, 28, 28), Color3.fromRGB(200, 200, 200))
+ClearBtn = createButton("ClearBtn", "🗑️ CLEAR", UDim2.new(0, 330, 0, 270), UDim2.new(0, 135, 0, 40), Color3.fromRGB(28, 28, 28), Color3.fromRGB(200, 200, 200))
+
+---------------------------------------------------------
+-- 5. ANIMATIONS (STARTUP & TOGGLE)
+---------------------------------------------------------
+local function playStartupAnimation()
+    local dot = Instance.new("Frame")
+    dot.Name = "IntroDot"
+    dot.Parent = ScreenGui
+    dot.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    dot.Position = UDim2.new(0.5, -5, 0.5, -5)
+    dot.Size = UDim2.new(0, 10, 0, 10)
+    dot.AnchorPoint = Vector2.new(0.5, 0.5)
+
+    local dotCorner = Instance.new("UICorner")
+    dotCorner.CornerRadius = UDim.new(1, 0)
+    dotCorner.Parent = dot
+
+    local boltIcon = Instance.new("TextLabel")
+    boltIcon.Parent = dot
+    boltIcon.BackgroundTransparency = 1
+    boltIcon.Size = UDim2.new(1, 0, 1, 0)
+    boltIcon.Font = Enum.Font.GothamBlack
+    boltIcon.Text = "⚡"
+    boltIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+    boltIcon.TextSize = 1
+
+    local t1 = TweenService:Create(dot, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 90, 0, 90)
+    })
+    local t1_text = TweenService:Create(boltIcon, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        TextSize = 45,
+        Rotation = -25
+    })
+    
+    t1:Play()
+    t1_text:Play()
+    t1.Completed:Wait()
+    task.wait(0.2)
+
+    local t2 = TweenService:Create(dot, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    })
+    t2:Play()
+    t2.Completed:Wait()
+    dot:Destroy()
+
+    MainFrame.Position = lastMainFramePos
+    MainFrame.Size = UDim2.new(0, 480, 0, 330)
+    MainFrame.BackgroundTransparency = 0
+    MainFrame.Visible = true
+end
+
+local function closeToToggleAnim()
+    lastMainFramePos = MainFrame.Position
+    
+    local animDot = Instance.new("Frame")
+    animDot.Parent = ScreenGui
+    animDot.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    animDot.Position = lastMainFramePos + UDim2.new(0, 240, 0, 165)
+    animDot.Size = UDim2.new(0, 480, 0, 330)
+    animDot.AnchorPoint = Vector2.new(0.5, 0.5)
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = animDot
+
+    MainFrame.Visible = false
+
+    local shrink = TweenService:Create(animDot, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 20, 0, 20)
+    })
+    local roundCorner = TweenService:Create(corner, TweenInfo.new(0.15), {
+        CornerRadius = UDim.new(1, 0)
+    })
+    
+    shrink:Play()
+    roundCorner:Play()
+    shrink.Completed:Wait()
+
+    local move = TweenService:Create(animDot, TweenInfo.new(0.18, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        Position = OpenToggleBtn.Position + UDim2.new(0, 20, 0, 20)
+    })
+    move:Play()
+    move.Completed:Wait()
+
+    animDot:Destroy()
+    OpenToggleBtn.Visible = true
+end
+
+local function openFromToggleAnim()
+    lastTogglePos = OpenToggleBtn.Position
+    OpenToggleBtn.Visible = false
+
+    local animDot = Instance.new("Frame")
+    animDot.Parent = ScreenGui
+    animDot.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    animDot.Position = lastTogglePos + UDim2.new(0, 20, 0, 20)
+    animDot.Size = UDim2.new(0, 20, 0, 20)
+    animDot.AnchorPoint = Vector2.new(0.5, 0.5)
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = animDot
+
+    local move = TweenService:Create(animDot, TweenInfo.new(0.18, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        Position = lastMainFramePos + UDim2.new(0, 240, 0, 165)
+    })
+    move:Play()
+    move.Completed:Wait()
+
+    local expand = TweenService:Create(animDot, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 480, 0, 330)
+    })
+    local squareCorner = TweenService:Create(corner, TweenInfo.new(0.2), {
+        CornerRadius = UDim.new(0, 10)
+    })
+
+    expand:Play()
+    squareCorner:Play()
+    expand.Completed:Wait()
+
+    animDot:Destroy()
+    MainFrame.Position = lastMainFramePos
+    MainFrame.Visible = true
+end
+
+---------------------------------------------------------
+-- 6. CUSTOM DRAGGING
+---------------------------------------------------------
+local dragging = false
+local dragInput, dragStart, startPos
+
+TopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+
+        TweenService:Create(MainFrame, TweenInfo.new(0.15), {BackgroundTransparency = 0.55}):Play()
+        TweenService:Create(TopBar, TweenInfo.new(0.15), {BackgroundTransparency = 0.55}):Play()
+        TweenService:Create(EditorFrame, TweenInfo.new(0.15), {BackgroundTransparency = 0.55}):Play()
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                TweenService:Create(MainFrame, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
+                TweenService:Create(TopBar, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
+                TweenService:Create(EditorFrame, TweenInfo.new(0.15), {BackgroundTransparency = 0}):Play()
+            end
+        end)
+    end
+end)
+
+TopBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+---------------------------------------------------------
+-- 7. SYSTEM EVENTS & LOGIC
+---------------------------------------------------------
+
+-- [UPDATED] ปุ่ม Run สคริปต์ พร้อมระบบตรวจจับ Error / Empty
+RunBtn.MouseButton1Click:Connect(function()
+    local code = ScriptInput.Text
+    if string.gsub(code, "%s+", "") == "" then
+        showNotification("⚠️ PLEASE ENTER A SCRIPT FIRST", false, true)
+        return
+    end
+
+    local success, err = pcall(function()
+        loadstring(code)()
+    end)
+
+    if success then
+        showNotification("✅ RUN SUCCESSFUL!", true, false)
+    else
+        showNotification("❌ RUN FAILED: " .. tostring(err), false, false)
+    end
+end)
+
+-- [UPDATED] ปุ่ม Copy สคริปต์ พร้อมระบบเช็กความว่างเปล่า
+CopyBtn.MouseButton1Click:Connect(function()
+    local code = ScriptInput.Text
+    if string.gsub(code, "%s+", "") == "" then
+        showNotification("⚠️ NOTHING TO COPY!", false, true)
+        return
+    end
+
+    if setclipboard then
+        setclipboard(code)
+        showNotification("📋 COPIED TO CLIPBOARD!", true, false)
+    else
+        showNotification("❌ EXECUTOR DOES NOT SUPPORT SETCLIPBOARD", false, false)
+    end
+end)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    ScriptInput.Text = ""
+    updateEditor()
+    showNotification("🗑️ CLEARED ALL TEXT", true, false)
+end)
+
+MinimizeBtn.MouseButton1Click:Connect(closeToToggleAnim)
+OpenToggleBtn.MouseButton1Click:Connect(openFromToggleAnim)
+
+task.spawn(playStartupAnimation)
